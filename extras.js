@@ -2,15 +2,12 @@
 **  Extras File
 ** New extras stage for all brands
 **/
+
+var arrivalDate = new Date( Date.parse( breakData.arrivalDate ) );
 // store the attraction reply data
 var attractionPrices = {};
 var supplementPrices = {};
 var ISOFormat = 'yyyy-MM-dd'
-// Set up datepicker for either side of arrival
-var arrivalDate = new Date( Date.parse( breakData.arrivalDate ) );
-var attractionDate = new Date( Date.parse( breakData.attractionDate ) );
-// calculate extra night dates
-var tempDate = new Date( arrivalDate );
 // day before arrival date for extra Night before
 var extraNightFirstDate = arrivalDate.clone().add( -1 ).days();
 // departure date for extra Night after
@@ -20,185 +17,191 @@ var extraNightBefore = extraNightFirstDate.toString( ISOFormat );
 var extraNightAfter = extraNightLastDate.toString( ISOFormat );
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+function formatDate( date ) {
+	return $.datepicker.formatDate( 'D dd M y', new Date( date ) );
+}
+
+function Basket() {
+	var basket = this;
+
+	function _rebuild() {
+		// reset price
+		var cumulativePrice = basket.config.defaults.price;
+		// clear extras
+		basket.config.objects.extras.$list.html( '' );
+		// set hotel dates
+		basket.config.objects.hotel.$checkIn.html( formatDate( basket.hotel.checkIn() ) );
+		basket.config.objects.hotel.$checkOut.html( formatDate( basket.hotel.checkOut() ) );
+		basket.config.objects.hotel.$nights.html( parseInt( basket.hotel.nights() ) );
+
+		// hide extras in basket if none are selected
+		if( basket.extras.list().length === 0 ) {
+			basket.extras.hide();
+			basket.price.set( parseFloat( cumulativePrice ) );
+		} else {
+			// if we have extras selected, loop through them
+
+			$.each( basket.extras.list(), function( index, extra ) {
+				cumulativePrice = parseFloat( cumulativePrice ) + parseFloat( extra.price );
+				basket.config.objects.extras.$list.append( '<p>'+extra.name+' <a href="" class="js-removeExtra" data-id="'+extra.id+'"><small>- remove</small></a></p>' );
+				if( extra.extraNight === true ) {
+					basket.config.objects.hotel.$nights.html( parseInt( basket.hotel.nights() + 1 ) );
+					if( extra.date < basket.hotel.checkIn() ) {
+						basket.config.objects.hotel.$checkIn.html( formatDate( extra.date ) );
+					} else {
+						basket.config.objects.hotel.$checkOut.html( formatDate( new Date ( extra.date ).add( 1 ).days() ) );
+					}
+				}
+			} );
+			// update the price on the DOM
+			basket.price.set( cumulativePrice.toFixed( 2 ) );
+			// ensure the extras portion is showing
+			basket.extras.show();
+		}
+	};
+
+	basket.config = {
+		objects: {
+			$basket: $( '.js-basket' ),
+			hotel: {
+				$nights: $( '.js-basket_hotel_nights' ),
+				$checkIn: $( '.js-basket_hotel_checkIn' ),
+				$checkOut: $( '.js-basket_hotel_checkOut' )
+			},
+			extras: {
+				$container: $( '.js-basket_extras' ),
+				$list: $( '.js_basket_extras_list' )
+			},
+			$price: $( '.js_totalPrice' )
+		},
+		defaults: {
+			price: parseFloat( breakData.jsonPackage.price ),
+			arrivalDate: new Date( Date.parse( breakData.arrivalDate ) ),
+			attractionDate: new Date( Date.parse( breakData.attractionDate ) ),
+			nights: parseInt( breakData.nights ),
+		},
+		templates: {
+			_extra: function( extra ) {
+				return '<p>'+extra.name+' <a href="" class="js-removeExtra" data-id="'+extra.id+'"><small>- remove</small></a></p>'
+			}
+		}
+	};
+
+	basket.price = function price( price ) {
+		var price = this;
+		price.current = basket.config.defaults.price;
+
+		price.set = function( value ) {
+			basket.config.objects.$price.html( parseFloat( value ).toFixed( 2 ) );
+		}
+		price.add = function( value ) {
+			price.set( (price.current + value) );
+		}
+
+		return price;
+	}();
+
+	basket.hotel = function hotel() {
+		var hotel = this;
+		var properties = {
+			_checkInDate: new Date( basket.config.defaults.arrivalDate ),
+			_checkOutDate: new Date( basket.config.defaults.arrivalDate ).add( basket.config.defaults.nights ).days(),
+			_nights: parseInt( breakData.nights )
+		}
+
+		hotel.checkIn = function( date ) {
+			if ( arguments.length ) {
+				properties._checkInDate = new Date( date );
+			}
+			return properties._checkInDate;
+		}
+
+		hotel.checkOut = function( date ) {
+			if ( arguments.length ) {
+				properties._checkOutDate = new Date( date );
+			}
+			return properties._checkOutDate;
+		}
+
+		hotel.nights = function( nights ) {
+			if ( arguments.length ) {
+				properties._nights = nights;
+			}
+			return properties._nights;
+		}
+
+		return hotel;
+	}();
+
+	basket.extras = function() {
+		var extras = this;
+		var selected = [];
+
+		extras.list = function() {
+			return selected;
+		}
+
+		extras.add = function( obj ) {
+			selected.push( _transform( obj ) );
+			_rebuild();
+		}
+
+		extras.remove = function( id ) {
+			for(var i = 0; i < selected.length; i++) {
+			    if(selected[i].id == id ) {
+			        selected.splice(i, 1);
+			        break;
+			    }
+			}
+			_rebuild();
+		}
+
+		extras.show = function() {
+			basket.config.objects.extras.$container.show();
+		}
+
+		extras.hide = function() {
+			basket.config.objects.extras.$container.hide();
+		}
+
+		function _transform( obj ) {
+			return {
+				id: obj.data( 'id' ),
+				name: obj.data( 'name' ),
+				price: parseFloat( obj.data( 'price' ) ).toFixed( 2 ),
+				date: new Date( obj.data( 'date' ) ),
+				composition: obj.data( 'comp' ),
+				extraNight: (obj.attr( 'data-extra-night' ) === "true")
+			}
+		}
+
+		extras.updateExtraDate = function( id, date ) {
+			for(var i = 0; i < selected.length; i++) {
+			    if(selected[i].id == id) {
+			        selected[i].date = new Date( date );
+			        break;
+			    }
+			}
+			_rebuild();
+		}
+
+		extras.updateExtraPrice = function( id, price ) {
+			for(var i = 0; i < selected.length; i++) {
+			    if(selected[i].id == id) {
+			        selected[i].price = parseFloat( price ).toFixed( 2 );
+			        break;
+			    }
+			}
+			_rebuild();
+		}
+
+		return extras;
+	}();
+
+	return basket;
+};
+
+var basketCtrl = new Basket();
 
 // hide extra attraction on load!!
 $( '.loadHide' ).hide();
@@ -255,26 +258,24 @@ $( '.datepicker' ).datepicker( {
 		if( currentElement.hasClass( 'attraction-extranight-date' ) ) {
 			// update the duplicate mobile extra night input
 			$( 'select' ).filter( '.attraction-extranight-date' ).val( isoDate );
-
-
-
+			currentElement.attr( 'data-date', isoDate );
+			currentElement.closest( '.attraction-info' ).attr( 'data-date', isoDate );
+			currentElement.closest( '.attraction-info' ).find( '.attraction-extranight-add' ).attr( 'data-date', isoDate );
 
 			// update the extra night details for selected date
 			changeExtraNight( isoDate );
 		} else{
 			// update the duplicate mobile extra night input
 			currentElement.siblings( '.attraction-date' ).val( isoDate );
-
-
-
+			currentElement.attr( 'data-date', isoDate );
+			currentElement.closest( '.attraction-info' ).attr( 'data-date', isoDate );
+			currentElement.closest( '.attraction-info' ).find( '.attraction-add' ).attr( 'data-date', isoDate );
 
 			// trigger the attraction date change
 			currentElement.change();
 		}
-
-
-
-
+		// check if this is already added to the basket, and if so, update the date
+		basketCtrl.extras.updateExtraDate( currentElement.attr( 'data-label' ), isoDate );
 	}
 } );
 
@@ -303,84 +304,24 @@ function changeExtraNight( extraNightDate ) {
 	}
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Add/remove extras and add update price accordingly
 $( '#attraction' ).on( 'click', '.checkbox-input', function() {
-	var noCollapse = '';
-	var updatedTotal;
-	var context = $( this );
-	var attContext = $( this ).closest( '.attraction-element' );
-	// Assign this extras json package
-	var extraPrice = context.hasClass( 'attraction-extranight-add' ) ? $( '.attraction-extranight-price' ).html() : context.data( 'json-package' ).price;
-	var currentTotalPrice = $( '.js_totalPrice' ).html();
-	var gaDataAction = 'Add Attraction To Cart';
-	if( context.hasClass( 'attraction-extranight-add' ) ) {
-		extrasJson = { price: $( '.attraction-extranight-price' ).html() };
-		if( window.hxBits && hxBits.sb_web5521 ) {
-			var numberOfNights = $( '#numberOfNights' );
-			var extraNightIs = $( '.datepicker' ).datepicker( "getDate" ) > arrivalDate ? 'After' : 'Before';
-			$( '.js-extraNight' ).hide();
-			if( context.hasClass( 'checked' ) ) {
-				// If extra night was already selected, remove a night
-				numberOfNights.html( parseInt( numberOfNights.html() ) - 1 );
-				$( '.js-originalExtraNight' ).show();
-			} else {
-				numberOfNights.html( parseInt( numberOfNights.html() ) + 1 );
-				$( '.js-extraNight' + extraNightIs ).show();
-			}
-		}
-	}
-	$( '.attraction-add, .attraction-extranight-add', attContext ).toggleClass( 'checked' );
-	if( context.hasClass( 'checked' ) ) {
-		// stop changes to party composition and date after attractionis selected
-		$( '.stepper_button, .attraction-date, .attraction-extranight-date', attContext ).prop( 'disabled', true );
-		updatedTotal = parseFloat( currentTotalPrice ) + parseFloat( extraPrice );
-		gaDataAction = 'Remove Attraction From Cart';
+	var checkbox = $( this );
+	checkbox.data( 'date', checkbox.closest( '.attraction-info' ).data( 'date' ) );
+	if( checkbox.is( ':checked' ) ) {
+		// check there's a date
+		var date = new Date( checkbox.closest( '.attraction-info' ).find( '.attraction-date, .attraction-extranight-date' ).attr( 'data-date' ) ) ;
+		checkbox.data( 'date', date );
+		basketCtrl.extras.add( checkbox );
 	} else {
-		// allow changes to party composition and date
-		$( '.stepper_button, .attraction-date, .attraction-extranight-date', attContext ).prop( 'disabled', false );
-		updatedTotal = parseFloat( currentTotalPrice ) - parseFloat( extraPrice );
+		basketCtrl.extras.remove( checkbox.data( 'id' ) );
 	}
-	// Update the data-action for GA. Using .data doesn't appear to work with the current version of jQuery (in case you were wondering)
-	context.attr( 'data-action', gaDataAction );
-	// Update the total on display
-	$( '.js_totalPrice' ).html( updatedTotal.formatNr() );
-	//toggle the skip and book buttons
-	toggleSkipAttractionsButton();		
-} );
+});
+
+$( '#basketExtras' ).on( 'click', '.js-removeExtra', function() {
+	var id = $( this ).data( 'id' );
+	$( '.checkbox-input[data-label='+id+']' ).prop( 'checked', false );
+	basketCtrl.extras.remove( id );
+});
 
 function toggleSkipAttractionsButton() {
 	// If attractions have been selected hide the skip button and show the book button
@@ -727,6 +668,7 @@ function updateAttractions( date, party, attractionCode ) {
 		if( ( attractionPrices[date] ) && ( attractionPrices[date][party] ) && ( attractionPrices[date][party][attractionCode] ) ) {
 			$( '#' + parentObject + ' .attraction-add' ).data( 'json-package', attractionPrices[date][party][attractionCode] );
 			$( '#' + parentObject + ' .attraction-price' ).html( attractionPrices[date][party][attractionCode]['price'] );
+			basketCtrl.extras.updateExtraPrice( attractionCode, attractionPrices[date][party][attractionCode]['price'] );
 		}
 	} else {
 		if( attractionPrices[date] ) {
@@ -734,6 +676,7 @@ function updateAttractions( date, party, attractionCode ) {
 				if( attractionPrices[date][party][attractionCode] ) {
 					$( '#' + attractionCode + ' .attraction-add' ).data( 'json-package', attractionPrices[date][party][attractionCode] );
 					$( '#' + attractionCode + ' .attraction-price' ).html( attractionPrices[date][party][attractionCode]['price'] );
+					basketCtrl.extras.updateExtraPrice( attractionCode, attractionPrices[date][party][attractionCode]['price'] );
 				}
 			}
 		}
@@ -782,7 +725,7 @@ $( document ).ready( function() {
 	$( '.js_totalPrice' ).html( breakData.jsonPackage.price );
 	// Need those ajax requests for extra night!!!
 	$( '.attraction-extranight' ).hide();
-	$( '#holdingPage' ).removeClass( 'fade' );
+	helpers.loading(true);
 	if ( parseInt( breakData.Nights ) < 5 ) {
 		// get extraNight before arrival date and after departure date
 		extraNight( 'before', extraNightBefore );
@@ -792,4 +735,3 @@ $( document ).ready( function() {
 	$( '.attraction-book' ).hide();
 	
 } );
-
