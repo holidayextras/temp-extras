@@ -40,9 +40,10 @@ function Basket() {
 			basket.price.set( parseFloat( cumulativePrice ) );
 		} else {
 			// if we have extras selected, loop through them
-
 			$.each( basket.extras.list(), function( index, extra ) {
+				// add the extra price to the current running price
 				cumulativePrice = parseFloat( cumulativePrice ) + parseFloat( extra.price );
+				// add the extra on to the extras list in our basket
 				basket.config.objects.extras.$list.append( '<p>'+extra.name+' <a href="" class="js-removeExtra" data-id="'+extra.id+'"><small>- remove</small></a></p>' );
 				if( extra.extraNight === true ) {
 					basket.config.objects.hotel.$nights.html( parseInt( basket.hotel.nights() + 1 ) );
