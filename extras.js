@@ -85,6 +85,7 @@ var basket = {
 				basket.items.extras.push( item );
 				break;
 		}
+		console.log(item);
 		basket.render();
 	},
 	remove: function remove( id ) {
@@ -138,6 +139,7 @@ var hotel = {
 
 var extras = {
 	create: function create( extra ) {
+		console.log( extra );
 		if( typeof extra.id === 'undefined' ) {
 			console.error( 'passed in extra has no "ID" property' );
 		}
@@ -300,8 +302,7 @@ $( '#attraction' ).on( 'click', '.checkbox-input', function() {
 	// ensure the checkbox's date is accurate
 	if( checkbox.is( ':checked' ) ) {
 		// check there's a date
-		var date = new Date( '#' + checkbox.data( 'id' ) + '-date' ).attr( 'data-date' ) ) ;
-		console.log( date );
+		var date = new Date( $( '#' + checkbox.data( 'id' ) + '-data' ).val() ) ;
 		// update the date of our checkbox
 		checkbox.data( 'date', date );
 		// add the extra to our basket
