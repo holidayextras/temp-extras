@@ -76,8 +76,8 @@ var basket = {
 		}
 		basket.config.targets.$price.html( parseFloat( cumulativePrice ).toFixed( 2 ) );
 	},
-	add: function add( type, item ) {
-		switch (type) {
+	add: function add( item ) {
+		switch (item.type) {
 			case 'hotel':
 				basket.items.hotel = item;
 				break;
@@ -87,22 +87,26 @@ var basket = {
 		}
 		basket.render();
 	},
-	remove: function remove( type, id ) {
-		for(var i = 0; i < basket.items[type].length; i++) {
-			if(basket.items[type][i].id == id ) {
-				basket.items[type].splice(i, 1);
-				break;
+	remove: function remove( id ) {
+		$.each( basket.items, function( key, items ){
+			for(var i = 0; i < items.length; i++) {
+				if(items[i].id == id ) {
+					basket.items[key].splice(i, 1);
+					break;
+				}
 			}
-		}
+		} );
 		basket.render();
 	},
-	update: function update( type, id, key, value ) {
-		for(var i = 0; i < basket.items[type].length; i++) {
-			if(basket.items[type][i].id == id ) {
-				basket.items[type][key] = value;
-				break;
+	update: function update( id, key, value ) {
+		$.each( basket.items, function( index, items ){
+			for(var i = 0; i < items.length; i++) {
+				if(items[i].id == id ) {
+					basket.items[index][i][key] = value;
+					break;
+				}
 			}
-		}
+		} );
 		basket.render();
 	}
 };
@@ -126,7 +130,8 @@ var hotel = {
 			price: hotel.price,
 			checkIn: hotel.checkIn,
 			checkOut: hotel.checkOut,
-			nights: hotel.nights
+			nights: hotel.nights,
+			type: 'hotel'
 		}
 	}
 };
@@ -153,7 +158,8 @@ var extras = {
 			name: extra.name,
 			price: extra.price,
 			date: extra.date,
-			extraNight: extra.extraNight
+			extraNight: extra.extraNight,
+			type: 'extra'
 		}
 	}
 };
@@ -179,7 +185,7 @@ basket.init( {
 	}
 } );
 
-basket.add( 'hotel',
+basket.add( 
 	hotel.create( {
 		price: parseFloat( breakData.jsonPackage.price ),
 		checkIn: new Date( Date.parse( breakData.arrivalDate ) ),
@@ -260,7 +266,7 @@ $( '.datepicker' ).datepicker( {
 			currentElement.change();
 		}
 		// check if this is already added to the basket, and if so, update the date
-		basket.update( 'extra', currentElement.attr( 'data-label' ), 'date', isoDate );
+		basket.update( currentElement.attr( 'data-label' ), 'date', isoDate );
 	}
 } );
 
@@ -299,7 +305,7 @@ $( '#attraction' ).on( 'click', '.checkbox-input', function() {
 		// update the date of our checkbox
 		checkbox.data( 'date', date );
 		// add the extra to our basket
-		basket.add( 'extra',
+		basket.add(
 			extras.create( {
 				id: checkbox.data( 'id' ),
 				name: checkbox.data( 'name' ),
@@ -311,7 +317,7 @@ $( '#attraction' ).on( 'click', '.checkbox-input', function() {
 		);
 	} else {
 		// remove the extra from our basket
-		basket.remove( 'extras', checkbox.data( 'id' ) );
+		basket.remove( checkbox.data( 'id' ) );
 	}
 });
 
@@ -321,7 +327,7 @@ $( '#basketExtras' ).on( 'click', '.js-removeExtra', function() {
 	// uncheck the checkbox
 	$( '.checkbox-input[data-label='+id+']' ).prop( 'checked', false );
 	// remove from the basket
-	basket.remove( 'extras', id );
+	basket.remove( id );
 });
 
 function toggleSkipAttractionsButton() {
@@ -669,7 +675,7 @@ function updateAttractions( date, party, attractionCode ) {
 		if( ( attractionPrices[date] ) && ( attractionPrices[date][party] ) && ( attractionPrices[date][party][attractionCode] ) ) {
 			$( '#' + parentObject + ' .attraction-add' ).data( 'json-package', attractionPrices[date][party][attractionCode] );
 			$( '#' + parentObject + ' .attraction-price' ).html( attractionPrices[date][party][attractionCode]['price'] );
-			basket.update( 'extra', attractionCode, 'price', attractionPrices[date][party][attractionCode]['price'] );
+			basket.update( attractionCode, 'price', attractionPrices[date][party][attractionCode]['price'] );
 		}
 	} else {
 		if( attractionPrices[date] ) {
@@ -677,7 +683,7 @@ function updateAttractions( date, party, attractionCode ) {
 				if( attractionPrices[date][party][attractionCode] ) {
 					$( '#' + attractionCode + ' .attraction-add' ).data( 'json-package', attractionPrices[date][party][attractionCode] );
 					$( '#' + attractionCode + ' .attraction-price' ).html( attractionPrices[date][party][attractionCode]['price'] );
-					basket.update( 'extra', attractionCode, 'price', attractionPrices[date][party][attractionCode]['price'] );
+					basket.update( attractionCode, 'price', attractionPrices[date][party][attractionCode]['price'] );
 				}
 			}
 		}
