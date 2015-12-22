@@ -11,14 +11,15 @@ var ISOFormat = 'yyyy-MM-dd'
 // day before arrival date for extra Night before
 var extraNightFirstDate = arrivalDate.clone().add( -1 ).days();
 // departure date for extra Night after
-var extraNightLastDate = arrivalDate.clone().add( parseInt( breakData.nights ) ).days();
+var extraNightLastDate = arrivalDate.clone().add( parseInt( breakData.nights, 10 ) ).days();
 // extra night before and after dates in ISO format
 var extraNightBefore = extraNightFirstDate.toString( ISOFormat );
 var extraNightAfter = extraNightLastDate.toString( ISOFormat );
 
 
-function formatDate( date ) {
-	return $.datepicker.formatDate( 'D dd M y', new Date( date ) );
+function formatDate( date, format ) {
+	formatString = ( typeof format === "undefined" ) ? 'D dd M y' : format;
+	return $.datepicker.formatDate( formatString, new Date( date ) );
 }
 
 var basket = {
@@ -29,16 +30,16 @@ var basket = {
 	},
 	init: function init( cfg ) {
 		if( typeof cfg.targets === 'undefined' ) {
-			console.error( 'basket targets were not defined' );
+			throw 'basket targets were not defined';
 		}
 		if( typeof cfg.templates === 'undefined' ) {
-			console.error( 'basket templates were not defined' );
+			throw 'basket templates were not defined';
 		}
 		basket.config = cfg;
 	},
 	render: function render() {
 		if(basket.config.length === 0) {
-			console.error( 'no config present' );
+			throw 'no config present';
 		}
 		// reset price
 		var cumulativePrice = basket.items.hotel.price;
@@ -47,7 +48,7 @@ var basket = {
 		// set hotel dates
 		basket.config.targets.hotel.$checkIn.html( formatDate( basket.items.hotel.checkIn ) );
 		basket.config.targets.hotel.$checkOut.html( formatDate( basket.items.hotel.checkOut ) );
-		basket.config.targets.hotel.$nights.html( parseInt( basket.items.hotel.nights ) );
+		basket.config.targets.hotel.$nights.html( parseInt( basket.items.hotel.nights, 10 ) );
 
 		// hide extras in basket if none are selected
 		if( basket.items.extras.length === 0 ) {
@@ -62,7 +63,7 @@ var basket = {
 				// check if the extra is for an extra night
 				if( extra.extraNight === true ) {
 					// if we have an extra night, we need to add another night on to our stay
-					basket.config.targets.hotel.$nights.html( parseInt( basket.items.hotel.nights + 1 ) );
+					basket.config.targets.hotel.$nights.html( parseInt( basket.items.hotel.nights + 1, 10 ) );
 					// do we add this night before or after our "base" stay?
 					if( extra.date < basket.items.hotel.checkIn ) {
 						basket.config.targets.hotel.$checkIn.html( formatDate( extra.date ) );
@@ -115,16 +116,16 @@ var basket = {
 var hotel = {
 	create: function create( hotel ) {
 		if( typeof hotel.price === 'undefined' ) {
-			console.error( 'passed in hotel has no "price" property' );
+			throw 'passed in hotel has no "price" property';
 		}
 		if( typeof hotel.checkIn === 'undefined' ) {
-			console.error( 'passed in hotel has no "checkIn" property' );
+			throw 'passed in hotel has no "checkIn" property';
 		}
 		if( typeof hotel.checkOut === 'undefined' ) {
-			console.error( 'passed in hotel has no "checkOut" property' );
+			throw 'passed in hotel has no "checkOut" property';
 		}
 		if( typeof hotel.nights === 'undefined' ) {
-			console.error( 'passed in hotel has no "nights" property' );
+			throw 'passed in hotel has no "nights" property';
 		}
 		return {
 			id: hotel.id,
@@ -141,19 +142,19 @@ var extras = {
 	create: function create( extra ) {
 		console.log( extra );
 		if( typeof extra.id === 'undefined' ) {
-			console.error( 'passed in extra has no "ID" property' );
+			throw 'passed in extra has no "ID" property';
 		}
 		if( typeof extra.name === 'undefined' ) {
-			console.error( 'passed in extra has no "name" property' );
+			throw 'passed in extra has no "name" property';
 		}
 		if( typeof extra.price === 'undefined' ) {
-			console.error( 'passed in extra has no "price" property' );
+			throw 'passed in extra has no "price" property';
 		}
 		if( typeof extra.date === 'undefined' ) {
-			console.error( 'passed in extra has no "date" property' );
+			throw 'passed in extra has no "date" property';
 		}
 		if( typeof extra.extraNight === 'undefined' ) {
-			console.error( 'passed in extra has no "extraNight" property' );
+			throw 'passed in extra has no "extraNight" property';
 		}
 		return {
 			id: extra.id,
@@ -192,7 +193,7 @@ basket.add(
 		price: parseFloat( breakData.jsonPackage.price ),
 		checkIn: new Date( Date.parse( breakData.arrivalDate ) ),
 		checkOut: new Date( Date.parse( breakData.attractionDate ).add( breakData.nights ).days() ),
-		nights: parseInt( breakData.nights )
+		nights: parseInt( breakData.nights, 10 )
 	} )
 );
 
@@ -734,7 +735,7 @@ $( document ).ready( function() {
 	// Need those ajax requests for extra night!!!
 	$( '.attraction-extranight' ).hide();
 	helpers.loading(true);
-	if ( parseInt( breakData.Nights ) < 5 ) {
+	if ( parseInt( breakData.Nights, 10 ) < 5 ) {
 		// get extraNight before arrival date and after departure date
 		extraNight( 'before', extraNightBefore );
 		extraNight( 'after', extraNightAfter );
