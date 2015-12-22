@@ -298,10 +298,10 @@ function changeExtraNight( extraNightDate ) {
 $( '#attraction' ).on( 'click', '.checkbox-input', function() {
 	var checkbox = $( this );
 	// ensure the checkbox's date is accurate
-	checkbox.data( 'date', checkbox.closest( '.attraction-info' ).data( 'date' ) );
 	if( checkbox.is( ':checked' ) ) {
 		// check there's a date
-		var date = new Date( checkbox.closest( '.attraction-info' ).find( '.attraction-date, .attraction-extranight-date' ).attr( 'data-date' ) ) ;
+		var date = new Date( '#' + checkbox.data( 'id' ) + '-date' ).attr( 'data-date' ) ) ;
+		console.log( date );
 		// update the date of our checkbox
 		checkbox.data( 'date', date );
 		// add the extra to our basket
