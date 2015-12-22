@@ -21,188 +21,172 @@ function formatDate( date ) {
 	return $.datepicker.formatDate( 'D dd M y', new Date( date ) );
 }
 
-function Basket() {
-	var basket = this;
-
-	function _rebuild() {
+var basket = {
+	config: {},
+	items: {
+		hotel: {},
+		extras: []
+	},
+	init: function init( cfg ) {
+		if( typeof cfg.targets === 'undefined' ) {
+			console.error( 'basket targets were not defined' );
+		}
+		if( typeof cfg.templates === 'undefined' ) {
+			console.error( 'basket templates were not defined' );
+		}
+		basket.config = cfg;
+	},
+	render: function render() {
+		if(basket.config.length === 0) {
+			console.error( 'no config present' );
+		}
 		// reset price
-		var cumulativePrice = basket.config.defaults.price;
+		var cumulativePrice = basket.items.hotel.price;
 		// clear extras
-		basket.config.objects.extras.$list.html( '' );
+		basket.config.targets.extras.$list.html( '' );
 		// set hotel dates
-		basket.config.objects.hotel.$checkIn.html( formatDate( basket.hotel.checkIn() ) );
-		basket.config.objects.hotel.$checkOut.html( formatDate( basket.hotel.checkOut() ) );
-		basket.config.objects.hotel.$nights.html( parseInt( basket.hotel.nights() ) );
+		basket.config.targets.hotel.$checkIn.html( formatDate( basket.items.hotel.checkIn ) );
+		basket.config.targets.hotel.$checkOut.html( formatDate( basket.items.hotel.checkOut ) );
+		basket.config.targets.hotel.$nights.html( parseInt( basket.items.hotel.nights ) );
 
 		// hide extras in basket if none are selected
-		if( basket.extras.list().length === 0 ) {
-			basket.extras.hide();
-			basket.price.set( parseFloat( cumulativePrice ) );
+		if( basket.items.extras.length === 0 ) {
+			basket.config.targets.extras.$list.hide();
 		} else {
 			// if we have extras selected, loop through them
-			$.each( basket.extras.list(), function( index, extra ) {
+			$.each( basket.items.extras, function( index, extra ) {
 				// add the extra price to the current running price
 				cumulativePrice = parseFloat( cumulativePrice ) + parseFloat( extra.price );
 				// add the extra on to the extras list in our basket
-				basket.config.objects.extras.$list.append( '<p>'+extra.name+' <a href="" class="js-removeExtra" data-id="'+extra.id+'"><small>- remove</small></a></p>' );
+				basket.config.targets.extras.$list.append( basket.config.templates._extra( extra ) );
+				// check if the extra is for an extra night
 				if( extra.extraNight === true ) {
-					basket.config.objects.hotel.$nights.html( parseInt( basket.hotel.nights() + 1 ) );
-					if( extra.date < basket.hotel.checkIn() ) {
-						basket.config.objects.hotel.$checkIn.html( formatDate( extra.date ) );
+					// if we have an extra night, we need to add another night on to our stay
+					basket.config.targets.hotel.$nights.html( parseInt( basket.items.hotel.nights + 1 ) );
+					// do we add this night before or after our "base" stay?
+					if( extra.date < basket.items.hotel.checkIn ) {
+						basket.config.targets.hotel.$checkIn.html( formatDate( extra.date ) );
 					} else {
-						basket.config.objects.hotel.$checkOut.html( formatDate( new Date ( extra.date ).add( 1 ).days() ) );
+						basket.config.targets.hotel.$checkOut.html( formatDate( new Date ( extra.date ).add( 1 ).days() ) );
 					}
 				}
 			} );
-			// update the price on the DOM
-			basket.price.set( cumulativePrice.toFixed( 2 ) );
 			// ensure the extras portion is showing
-			basket.extras.show();
+			basket.config.targets.extras.$list.show();
 		}
-	};
-
-	basket.config = {
-		objects: {
-			$basket: $( '.js-basket' ),
-			hotel: {
-				$nights: $( '.js-basket_hotel_nights' ),
-				$checkIn: $( '.js-basket_hotel_checkIn' ),
-				$checkOut: $( '.js-basket_hotel_checkOut' )
-			},
-			extras: {
-				$container: $( '.js-basket_extras' ),
-				$list: $( '.js_basket_extras_list' )
-			},
-			$price: $( '.js_totalPrice' )
-		},
-		defaults: {
-			price: parseFloat( breakData.jsonPackage.price ),
-			arrivalDate: new Date( Date.parse( breakData.arrivalDate ) ),
-			attractionDate: new Date( Date.parse( breakData.attractionDate ) ),
-			nights: parseInt( breakData.nights ),
-		},
-		templates: {
-			_extra: function( extra ) {
-				return '<p>'+extra.name+' <a href="" class="js-removeExtra" data-id="'+extra.id+'"><small>- remove</small></a></p>'
+		basket.config.targets.$price.html( parseFloat( cumulativePrice ).toFixed( 2 ) );
+	},
+	add: function add( type, item ) {
+		switch (type) {
+			case 'hotel':
+				basket.items.hotel = item;
+				break;
+			case 'extra':
+				basket.items.extras.push( item );
+				break;
+		}
+		basket.render();
+	},
+	remove: function remove( type, id ) {
+		for(var i = 0; i < basket.items[type].length; i++) {
+			if(basket.items[type][i].id == id ) {
+				basket.items[type].splice(i, 1);
+				break;
 			}
 		}
-	};
-
-	basket.price = function price( price ) {
-		var price = this;
-		price.current = basket.config.defaults.price;
-
-		price.set = function( value ) {
-			basket.config.objects.$price.html( parseFloat( value ).toFixed( 2 ) );
-		}
-		price.add = function( value ) {
-			price.set( (price.current + value) );
-		}
-
-		return price;
-	}();
-
-	basket.hotel = function hotel() {
-		var hotel = this;
-		var properties = {
-			_checkInDate: new Date( basket.config.defaults.arrivalDate ),
-			_checkOutDate: new Date( basket.config.defaults.arrivalDate ).add( basket.config.defaults.nights ).days(),
-			_nights: parseInt( breakData.nights )
-		}
-
-		hotel.checkIn = function( date ) {
-			if ( arguments.length ) {
-				properties._checkInDate = new Date( date );
-			}
-			return properties._checkInDate;
-		}
-
-		hotel.checkOut = function( date ) {
-			if ( arguments.length ) {
-				properties._checkOutDate = new Date( date );
-			}
-			return properties._checkOutDate;
-		}
-
-		hotel.nights = function( nights ) {
-			if ( arguments.length ) {
-				properties._nights = nights;
-			}
-			return properties._nights;
-		}
-
-		return hotel;
-	}();
-
-	basket.extras = function() {
-		var extras = this;
-		var selected = [];
-
-		extras.list = function() {
-			return selected;
-		}
-
-		extras.add = function( obj ) {
-			selected.push( _transform( obj ) );
-			_rebuild();
-		}
-
-		extras.remove = function( id ) {
-			for(var i = 0; i < selected.length; i++) {
-			    if(selected[i].id == id ) {
-			        selected.splice(i, 1);
-			        break;
-			    }
-			}
-			_rebuild();
-		}
-
-		extras.show = function() {
-			basket.config.objects.extras.$container.show();
-		}
-
-		extras.hide = function() {
-			basket.config.objects.extras.$container.hide();
-		}
-
-		function _transform( obj ) {
-			return {
-				id: obj.data( 'id' ),
-				name: obj.data( 'name' ),
-				price: parseFloat( obj.data( 'price' ) ).toFixed( 2 ),
-				date: new Date( obj.data( 'date' ) ),
-				composition: obj.data( 'comp' ),
-				extraNight: (obj.attr( 'data-extra-night' ) === "true")
+		basket.render();
+	},
+	update: function update( type, id, key, value ) {
+		for(var i = 0; i < basket.items[type].length; i++) {
+			if(basket.items[type][i].id == id ) {
+				basket.items[type][key] = value;
+				break;
 			}
 		}
-
-		extras.updateExtraDate = function( id, date ) {
-			for(var i = 0; i < selected.length; i++) {
-			    if(selected[i].id == id) {
-			        selected[i].date = new Date( date );
-			        break;
-			    }
-			}
-			_rebuild();
-		}
-
-		extras.updateExtraPrice = function( id, price ) {
-			for(var i = 0; i < selected.length; i++) {
-			    if(selected[i].id == id) {
-			        selected[i].price = parseFloat( price ).toFixed( 2 );
-			        break;
-			    }
-			}
-			_rebuild();
-		}
-
-		return extras;
-	}();
-
-	return basket;
+		basket.render();
+	}
 };
 
-var basketCtrl = new Basket();
+var hotel = {
+	create: function create( hotel ) {
+		if( typeof hotel.price === 'undefined' ) {
+			console.error( 'passed in hotel has no "price" property' );
+		}
+		if( typeof hotel.checkIn === 'undefined' ) {
+			console.error( 'passed in hotel has no "checkIn" property' );
+		}
+		if( typeof hotel.checkOut === 'undefined' ) {
+			console.error( 'passed in hotel has no "checkOut" property' );
+		}
+		if( typeof hotel.nights === 'undefined' ) {
+			console.error( 'passed in hotel has no "nights" property' );
+		}
+		return {
+			id: hotel.id,
+			price: hotel.price,
+			checkIn: hotel.checkIn,
+			checkOut: hotel.checkOut,
+			nights: hotel.nights
+		}
+	}
+};
+
+var extras = {
+	create: function create( extra ) {
+		if( typeof extra.id === 'undefined' ) {
+			console.error( 'passed in extra has no "ID" property' );
+		}
+		if( typeof extra.name === 'undefined' ) {
+			console.error( 'passed in extra has no "name" property' );
+		}
+		if( typeof extra.price === 'undefined' ) {
+			console.error( 'passed in extra has no "price" property' );
+		}
+		if( typeof extra.date === 'undefined' ) {
+			console.error( 'passed in extra has no "date" property' );
+		}
+		if( typeof extra.extraNight === 'undefined' ) {
+			console.error( 'passed in extra has no "extraNight" property' );
+		}
+		return {
+			id: extra.id,
+			name: extra.name,
+			price: extra.price,
+			date: extra.date,
+			extraNight: extra.extraNight
+		}
+	}
+};
+
+basket.init( {
+	targets: {
+		$basket: $( '.js-basket' ),
+		hotel: {
+			$nights: $( '.js-basket_hotel_nights' ),
+			$checkIn: $( '.js-basket_hotel_checkIn' ),
+			$checkOut: $( '.js-basket_hotel_checkOut' )
+		},
+		extras: {
+			$container: $( '.js-basket_extras' ),
+			$list: $( '.js-basket_extras_list' )
+		},
+		$price: $( '.js_totalPrice' )
+	},
+	templates: {
+		_extra: function( extra ) {
+			return '<p>'+extra.name+' <a class="js-removeExtra" data-id="'+extra.id+'"><small>- remove</a></span></p>'
+		}
+	}
+} );
+
+basket.add( 'hotel',
+	hotel.create( {
+		price: parseFloat( breakData.jsonPackage.price ),
+		checkIn: new Date( Date.parse( breakData.arrivalDate ) ),
+		checkOut: new Date( Date.parse( breakData.attractionDate ).add( breakData.nights ).days() ),
+		nights: parseInt( breakData.nights )
+	} )
+);
 
 // hide extra attraction on load!!
 $( '.loadHide' ).hide();
@@ -276,7 +260,7 @@ $( '.datepicker' ).datepicker( {
 			currentElement.change();
 		}
 		// check if this is already added to the basket, and if so, update the date
-		basketCtrl.extras.updateExtraDate( currentElement.attr( 'data-label' ), isoDate );
+		basket.update( 'extra', currentElement.attr( 'data-label' ), 'date', isoDate );
 	}
 } );
 
@@ -307,21 +291,37 @@ function changeExtraNight( extraNightDate ) {
 
 $( '#attraction' ).on( 'click', '.checkbox-input', function() {
 	var checkbox = $( this );
+	// ensure the checkbox's date is accurate
 	checkbox.data( 'date', checkbox.closest( '.attraction-info' ).data( 'date' ) );
 	if( checkbox.is( ':checked' ) ) {
 		// check there's a date
 		var date = new Date( checkbox.closest( '.attraction-info' ).find( '.attraction-date, .attraction-extranight-date' ).attr( 'data-date' ) ) ;
+		// update the date of our checkbox
 		checkbox.data( 'date', date );
-		basketCtrl.extras.add( checkbox );
+		// add the extra to our basket
+		basket.add( 'extra',
+			extras.create( {
+				id: checkbox.data( 'id' ),
+				name: checkbox.data( 'name' ),
+				price: parseFloat( checkbox.data( 'price' ) ).toFixed( 2 ),
+				date: new Date( checkbox.data( 'date' ) ),
+				composition: checkbox.data( 'comp' ),
+				extraNight: (checkbox.attr( 'data-extra-night' ) === "true")
+			} )
+		);
 	} else {
-		basketCtrl.extras.remove( checkbox.data( 'id' ) );
+		// remove the extra from our basket
+		basket.remove( 'extras', checkbox.data( 'id' ) );
 	}
 });
 
+// trigger a basket removal when clicking on an extras "remove" link, instead of the checkbox
 $( '#basketExtras' ).on( 'click', '.js-removeExtra', function() {
 	var id = $( this ).data( 'id' );
+	// uncheck the checkbox
 	$( '.checkbox-input[data-label='+id+']' ).prop( 'checked', false );
-	basketCtrl.extras.remove( id );
+	// remove from the basket
+	basket.remove( 'extras', id );
 });
 
 function toggleSkipAttractionsButton() {
@@ -669,7 +669,7 @@ function updateAttractions( date, party, attractionCode ) {
 		if( ( attractionPrices[date] ) && ( attractionPrices[date][party] ) && ( attractionPrices[date][party][attractionCode] ) ) {
 			$( '#' + parentObject + ' .attraction-add' ).data( 'json-package', attractionPrices[date][party][attractionCode] );
 			$( '#' + parentObject + ' .attraction-price' ).html( attractionPrices[date][party][attractionCode]['price'] );
-			basketCtrl.extras.updateExtraPrice( attractionCode, attractionPrices[date][party][attractionCode]['price'] );
+			basket.update( 'extra', attractionCode, 'price', attractionPrices[date][party][attractionCode]['price'] );
 		}
 	} else {
 		if( attractionPrices[date] ) {
@@ -677,7 +677,7 @@ function updateAttractions( date, party, attractionCode ) {
 				if( attractionPrices[date][party][attractionCode] ) {
 					$( '#' + attractionCode + ' .attraction-add' ).data( 'json-package', attractionPrices[date][party][attractionCode] );
 					$( '#' + attractionCode + ' .attraction-price' ).html( attractionPrices[date][party][attractionCode]['price'] );
-					basketCtrl.extras.updateExtraPrice( attractionCode, attractionPrices[date][party][attractionCode]['price'] );
+					basket.update( 'extra', attractionCode, 'price', attractionPrices[date][party][attractionCode]['price'] );
 				}
 			}
 		}
