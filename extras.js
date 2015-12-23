@@ -24,48 +24,48 @@ function formatDate( date, format ) {
 
 var basket = {
 	config: {},
-	items: {
+	_items: {
 		hotel: {},
 		extras: []
 	},
 	init: function init( cfg ) {
 		if( typeof cfg.targets === 'undefined' ) {
-			throw 'basket targets were not defined';
+			throw new Error('basket targets were not defined');
 		}
 		if( typeof cfg.templates === 'undefined' ) {
-			throw 'basket templates were not defined';
+			throw new Error('basket templates were not defined');
 		}
 		basket.config = cfg;
 	},
 	render: function render() {
 		if(basket.config.length === 0) {
-			throw 'no config present';
+			throw new Error('no config present');
 		}
 		// reset price
-		var cumulativePrice = basket.items.hotel.price;
+		var cumulativePrice = basket._items.hotel.price;
 		// clear extras
-		basket.config.targets.extras.$list.html( '' );
+		basket.config.targets.extras.$list.empty();
 		// set hotel dates
-		basket.config.targets.hotel.$checkIn.html( formatDate( basket.items.hotel.checkIn ) );
-		basket.config.targets.hotel.$checkOut.html( formatDate( basket.items.hotel.checkOut ) );
-		basket.config.targets.hotel.$nights.html( parseInt( basket.items.hotel.nights, 10 ) );
+		basket.config.targets.hotel.$checkIn.html( formatDate( basket._items.hotel.checkIn ) );
+		basket.config.targets.hotel.$checkOut.html( formatDate( basket._items.hotel.checkOut ) );
+		basket.config.targets.hotel.$nights.html( parseInt( basket._items.hotel.nights, 10 ) );
 
 		// hide extras in basket if none are selected
-		if( basket.items.extras.length === 0 ) {
+		if( basket._items.extras.length === 0 ) {
 			basket.config.targets.extras.$list.hide();
 		} else {
 			// if we have extras selected, loop through them
-			$.each( basket.items.extras, function( index, extra ) {
+			$.each( basket._items.extras, function( index, extra ) {
 				// add the extra price to the current running price
 				cumulativePrice = parseFloat( cumulativePrice ) + parseFloat( extra.price );
 				// add the extra on to the extras list in our basket
-				basket.config.targets.extras.$list.append( basket.config.templates._extra( extra ) );
+				basket.config.templates._extra( extra ).appendTo( basket.config.targets.extras.$list );
 				// check if the extra is for an extra night
-				if( extra.extraNight === true ) {
+				if( extra.extraNight ) {
 					// if we have an extra night, we need to add another night on to our stay
-					basket.config.targets.hotel.$nights.html( parseInt( basket.items.hotel.nights + 1, 10 ) );
+					basket.config.targets.hotel.$nights.html( parseInt( basket._items.hotel.nights + 1, 10 ) );
 					// do we add this night before or after our "base" stay?
-					if( extra.date < basket.items.hotel.checkIn ) {
+					if( extra.date < basket._items.hotel.checkIn ) {
 						basket.config.targets.hotel.$checkIn.html( formatDate( extra.date ) );
 					} else {
 						basket.config.targets.hotel.$checkOut.html( formatDate( new Date ( extra.date ).add( 1 ).days() ) );
@@ -78,22 +78,21 @@ var basket = {
 		basket.config.targets.$price.html( parseFloat( cumulativePrice ).toFixed( 2 ) );
 	},
 	add: function add( item ) {
-		switch (item.type) {
+		switch ( item.type ) {
 			case 'hotel':
-				basket.items.hotel = item;
+				basket._items.hotel = item;
 				break;
 			case 'extra':
-				basket.items.extras.push( item );
+				basket._items.extras.push( item );
 				break;
 		}
-		console.log(item);
 		basket.render();
 	},
 	remove: function remove( id ) {
-		$.each( basket.items, function( key, items ){
-			for(var i = 0; i < items.length; i++) {
-				if(items[i].id == id ) {
-					basket.items[key].splice(i, 1);
+		$.each( basket._items, function( key, items ){
+			for( var i = 0; i < items.length; i++ ) {
+				if( items[i].id == id ) {
+					basket._items[key].splice( i, 1 );
 					break;
 				}
 			}
@@ -101,10 +100,10 @@ var basket = {
 		basket.render();
 	},
 	update: function update( id, key, value ) {
-		$.each( basket.items, function( index, items ){
+		$.each( basket._items, function( index, items ){
 			for(var i = 0; i < items.length; i++) {
-				if(items[i].id == id ) {
-					basket.items[index][i][key] = value;
+				if( items[i].id == id ) {
+					basket._items[index][i][key] = value;
 					break;
 				}
 			}
@@ -114,25 +113,25 @@ var basket = {
 };
 
 var hotel = {
-	create: function create( hotel ) {
-		if( typeof hotel.price === 'undefined' ) {
-			throw 'passed in hotel has no "price" property';
+	create: function create( object ) {
+		if( typeof object.price === 'undefined' ) {
+			throw new Error('passed in hotel has no "price" property');
 		}
-		if( typeof hotel.checkIn === 'undefined' ) {
-			throw 'passed in hotel has no "checkIn" property';
+		if( typeof object.checkIn === 'undefined' ) {
+			throw new Error('passed in hotel has no "checkIn" property');
 		}
-		if( typeof hotel.checkOut === 'undefined' ) {
-			throw 'passed in hotel has no "checkOut" property';
+		if( typeof object.checkOut === 'undefined' ) {
+			throw new Error('passed in hotel has no "checkOut" property');
 		}
-		if( typeof hotel.nights === 'undefined' ) {
-			throw 'passed in hotel has no "nights" property';
+		if( typeof object.nights === 'undefined' ) {
+			throw new Error('passed in hotel has no "nights" property');
 		}
 		return {
-			id: hotel.id,
-			price: hotel.price,
-			checkIn: hotel.checkIn,
-			checkOut: hotel.checkOut,
-			nights: hotel.nights,
+			id: object.id,
+			price: object.price,
+			checkIn: object.checkIn,
+			checkOut: object.checkOut,
+			nights: object.nights,
 			type: 'hotel'
 		}
 	}
@@ -140,21 +139,20 @@ var hotel = {
 
 var extras = {
 	create: function create( extra ) {
-		console.log( extra );
 		if( typeof extra.id === 'undefined' ) {
-			throw 'passed in extra has no "ID" property';
+			throw new Error('passed in extra has no "ID" property');
 		}
 		if( typeof extra.name === 'undefined' ) {
-			throw 'passed in extra has no "name" property';
+			throw new Error('passed in extra has no "name" property');
 		}
 		if( typeof extra.price === 'undefined' ) {
-			throw 'passed in extra has no "price" property';
+			throw new Error('passed in extra has no "price" property');
 		}
 		if( typeof extra.date === 'undefined' ) {
-			throw 'passed in extra has no "date" property';
+			throw new Error('passed in extra has no "date" property');
 		}
 		if( typeof extra.extraNight === 'undefined' ) {
-			throw 'passed in extra has no "extraNight" property';
+			throw new Error('passed in extra has no "extraNight" property');
 		}
 		return {
 			id: extra.id,
@@ -177,13 +175,20 @@ basket.init( {
 		},
 		extras: {
 			$container: $( '.js-basket_extras' ),
-			$list: $( '.js-basket_extras_list' )
+			$list: $( '.js-basket_extras_list' ),
+			$dummy: $( '#extra_dummy_template' )
 		},
 		$price: $( '.js_totalPrice' )
 	},
 	templates: {
 		_extra: function( extra ) {
-			return '<p>'+extra.name+' <a class="js-removeExtra" data-id="'+extra.id+'"><small>- remove</a></span></p>'
+			// get and clone dummy
+			var clone = $( '#extra_dummy_template').clone();
+			clone.find( '.js-basket_extra_name' ).html( extra.name );
+			clone.find( '.js-removeExtra' ).data( 'id', extra.id );
+			clone.removeAttr( 'id' );
+			clone.show();
+			return clone;
 		}
 	}
 } );
@@ -400,7 +405,7 @@ $( '#attraction' ).on( 'click', '.stepper_button', function() {
 	}
 
 	// If we can't go higher or lower than the current value, tell the user
-	if( stepperError === true ) {
+	if( stepperError ) {
 		$stepperButtonParent.addClass( 'text-danger' );
 	} else {
 		$stepperButtonParent.removeClass( 'text-danger' );
