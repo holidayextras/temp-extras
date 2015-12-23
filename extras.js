@@ -260,18 +260,12 @@ $( '.datepicker' ).datepicker( {
 		if( currentElement.hasClass( 'attraction-extranight-date' ) ) {
 			// update the duplicate mobile extra night input
 			$( 'select' ).filter( '.attraction-extranight-date' ).val( isoDate );
-			currentElement.attr( 'data-date', isoDate );
-			currentElement.closest( '.attraction-info' ).attr( 'data-date', isoDate );
-			currentElement.closest( '.attraction-info' ).find( '.attraction-extranight-add' ).attr( 'data-date', isoDate );
 
 			// update the extra night details for selected date
 			changeExtraNight( isoDate );
 		} else{
 			// update the duplicate mobile extra night input
 			currentElement.siblings( '.attraction-date' ).val( isoDate );
-			currentElement.attr( 'data-date', isoDate );
-			currentElement.closest( '.attraction-info' ).attr( 'data-date', isoDate );
-			currentElement.closest( '.attraction-info' ).find( '.attraction-add' ).attr( 'data-date', isoDate );
 
 			// trigger the attraction date change
 			currentElement.change();
