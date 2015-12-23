@@ -18,6 +18,9 @@ var extraNightAfter = extraNightLastDate.toString( ISOFormat );
 
 
 function formatDate( date, format ) {
+	if ( isNaN( Date.parse( date ) ) ) {
+	    throw new Error( 'Invalid Date' );
+	}
 	formatString = ( typeof format === "undefined" ) ? 'D dd M y' : format;
 	return $.datepicker.formatDate( formatString, new Date( date ) );
 }
